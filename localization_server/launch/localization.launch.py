@@ -11,6 +11,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     
     map_file = LaunchConfiguration('map_file')
+    cmd_vel_remap = LaunchConfiguration('cmd_vel_remap')
     nav2_yaml = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config_sim.yaml')
     rviz_config_dir = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'localizer_rviz_config.rviz')
 
@@ -21,13 +22,19 @@ def generate_launch_description():
             default_value='warehouse_map_sim.yaml',
             description='Name of the map YAML file inside map_server/config'),
 
+        DeclareLaunchArgument(
+            'cmd_vel_remap',
+            default_value='/diffbot_base_controller/cmd_vel_unstamped',
+            description='Twist message remapped to robots topic'
+        ),
+
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_transform_publisher_turtle_odom',
             output='screen',
             emulate_tty=True,
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'robot_odom']
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
         ),
 
         Node(
@@ -47,7 +54,8 @@ def generate_launch_description():
             executable='amcl',
             name='amcl',
             output='screen',
-            parameters=[nav2_yaml]
+            parameters=[nav2_yaml],
+            remappings=[('/cmd_vel', cmd_vel_remap)]
         ),
 
         Node(
