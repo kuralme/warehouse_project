@@ -1,4 +1,4 @@
-image: turtlebot_area_two_robots.pgm
+image: warehouse_map_sim.pgm
 mode: trinary
 resolution: 0.05
 origin: [-1.18, -4.02, 0]
