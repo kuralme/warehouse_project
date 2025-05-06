@@ -9,10 +9,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     map_file = LaunchConfiguration('map_file')
-
-    # map_yaml = os.path.join(get_package_share_directory('map_server'), 'config', 'warehouse_map_sim.yaml')
     rviz_config_dir = os.path.join(get_package_share_directory('map_server'), 'rviz', 'map_display.rviz')
-    rviz_config_real = os.path.join(get_package_share_directory('map_server'), 'rviz', 'map_display_real.rviz')
 
     return LaunchDescription([
 

@@ -92,9 +92,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 4632
+      Max Intensity: 4491
       Min Color: 0; 0; 0
-      Min Intensity: 247
+      Min Intensity: 121
       Name: LaserScan
       Position Transformer: XYZ
       Selectable: true
@@ -249,6 +249,37 @@ Visualization Manager:
             robot_ar_marker_noisy_1:
               {}
             robot_base_footprint:
+              robot_base_link:
+                robot_elevator_base_link:
+                  robot_elevator_platform_link:
+                    {}
+                robot_front_cover_link:
+                  robot_base_docking_contact_link:
+                    {}
+                robot_front_laser_base_link:
+                  {}
+                robot_front_rgbd_camera_rgb_base_link:
+                  robot_front_rgbd_camera_depth_frame:
+                    robot_front_rgbd_camera_depth_optical_frame:
+                      {}
+                  robot_front_rgbd_camera_link:
+                    {}
+                  robot_front_rgbd_camera_rgb_optical_frame:
+                    {}
+                robot_imu_link:
+                  {}
+                robot_left_wheel_link:
+                  {}
+                robot_omni_backwheel_link:
+                  {}
+                robot_omni_front_leftwheel_link:
+                  {}
+                robot_omni_front_rightwheel_link:
+                  {}
+                robot_right_wheel_link:
+                  {}
+              robot_front_laser_link:
+                {}
               robot_top_cover_link:
                 {}
             robot_cart_laser:
@@ -263,36 +294,6 @@ Visualization Manager:
               {}
             robot_docking_station_laser_noisy_0:
               {}
-        robot_base_link:
-          robot_elevator_base_link:
-            robot_elevator_platform_link:
-              {}
-          robot_front_cover_link:
-            robot_base_docking_contact_link:
-              {}
-          robot_front_laser_base_link:
-            robot_front_laser_link:
-              {}
-          robot_front_rgbd_camera_rgb_base_link:
-            robot_front_rgbd_camera_depth_frame:
-              robot_front_rgbd_camera_depth_optical_frame:
-                {}
-            robot_front_rgbd_camera_link:
-              {}
-            robot_front_rgbd_camera_rgb_optical_frame:
-              {}
-          robot_imu_link:
-            {}
-          robot_left_wheel_link:
-            {}
-          robot_omni_backwheel_link:
-            {}
-          robot_omni_front_leftwheel_link:
-            {}
-          robot_omni_front_rightwheel_link:
-            {}
-          robot_right_wheel_link:
-            {}
       Update Interval: 0
       Value: true
   Enabled: true
@@ -341,25 +342,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 6.662228584289551
+      Distance: 8.357099533081055
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.7628768086433411
-        Y: 3.5548932552337646
-        Z: -0.7770878076553345
+        X: -0.7699579000473022
+        Y: -3.9224467277526855
+        Z: -1.8519995212554932
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7903982400894165
+      Pitch: 0.8103982210159302
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.77358341217041
+      Yaw: 0.16039682924747467
     Saved: ~
 Window Geometry:
   Displays:
