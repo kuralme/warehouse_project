@@ -10,7 +10,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    rviz_config_dir = os.path.join(get_package_share_directory('path_planner_server'), 'rviz', 'pathplanning.rviz')    
+    rviz_config_sim = os.path.join(get_package_share_directory('path_planner_server'), 'rviz', 'pathplanning.rviz')    
     controller_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'controller_sim.yaml')
     bt_navigator_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'bt_navigator_sim.yaml')
     planner_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'planner_sim.yaml')
@@ -39,7 +39,6 @@ def generate_launch_description():
                 name='controller_server',
                 output='screen',
                 parameters=[controller_yaml_real],
-                remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')]
             ),
 
             Node(
@@ -98,7 +97,7 @@ def generate_launch_description():
                 name='controller_server',
                 output='screen',
                 parameters=[controller_yaml],
-                remappings=[('/cmd_vel', '/robot/cmd_vel')]
+                remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')]
             ),
 
             Node(
@@ -130,7 +129,7 @@ def generate_launch_description():
                 executable='rviz2',
                 name='rviz2',
                 output='screen',
-                arguments=['-d', rviz_config_dir]
+                arguments=['-d', rviz_config_sim]
             ),
 
             Node(
