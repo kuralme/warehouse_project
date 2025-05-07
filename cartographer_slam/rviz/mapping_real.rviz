@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /RobotModel1/Links1
+        - /Odometry1/Topic1
         - /Odometry1/Shape1
         - /Map1/Topic1
         - /TF1/Frames1
@@ -92,9 +93,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 4491
+      Max Intensity: 7167
       Min Color: 0; 0; 0
-      Min Intensity: 121
+      Min Intensity: 329
       Name: LaserScan
       Position Transformer: XYZ
       Selectable: true
@@ -147,7 +148,7 @@ Visualization Manager:
         Durability Policy: Volatile
         Filter size: 10
         History Policy: Keep Last
-        Reliability Policy: Reliable
+        Reliability Policy: Best Effort
         Value: /odom
       Value: true
     - Alpha: 0.699999988079071
@@ -176,24 +177,12 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        map:
-          Value: true
-        robot_ar_marker_1:
-          Value: true
-        robot_ar_marker_noisy_1:
-          Value: true
         robot_base_docking_contact_link:
           Value: false
         robot_base_footprint:
           Value: true
         robot_base_link:
           Value: false
-        robot_cart_laser:
-          Value: true
-        robot_cart_laser_noisy:
-          Value: true
-        robot_cart_laser_noisy_0:
-          Value: true
         robot_docking_station_laser:
           Value: false
         robot_docking_station_laser_noisy:
@@ -224,8 +213,10 @@ Visualization Manager:
           Value: false
         robot_left_wheel_link:
           Value: false
+        robot_map:
+          Value: true
         robot_odom:
-          Value: false
+          Value: true
         robot_omni_backwheel_link:
           Value: false
         robot_omni_front_leftwheel_link:
@@ -242,12 +233,8 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
+        robot_map:
           robot_odom:
-            robot_ar_marker_1:
-              {}
-            robot_ar_marker_noisy_1:
-              {}
             robot_base_footprint:
               robot_base_link:
                 robot_elevator_base_link:
@@ -282,12 +269,6 @@ Visualization Manager:
                 {}
               robot_top_cover_link:
                 {}
-            robot_cart_laser:
-              {}
-            robot_cart_laser_noisy:
-              {}
-            robot_cart_laser_noisy_0:
-              {}
             robot_docking_station_laser:
               {}
             robot_docking_station_laser_noisy:
@@ -299,7 +280,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: map
+    Fixed Frame: robot_map
     Frame Rate: 30
   Name: root
   Tools:
@@ -342,16 +323,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.357099533081055
+      Distance: 13.150056838989258
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.7699579000473022
-        Y: -3.9224467277526855
-        Z: -1.8519995212554932
+        X: -1.033049464225769
+        Y: 1.7579842805862427
+        Z: -2.4679152965545654
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false

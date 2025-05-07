@@ -27,7 +27,7 @@ def generate_launch_description():
                 'use_sim_time': True,
                 'yaml_filename': PathJoinSubstitution([
                     FindPackageShare('map_server'),'config', map_file])
-            }]
+            }],
         ),
 
         Node(

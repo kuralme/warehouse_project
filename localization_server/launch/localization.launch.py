@@ -13,7 +13,8 @@ def generate_launch_description() -> LaunchDescription:
     
     nav2_yaml_sim = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config_sim.yaml')
     nav2_yaml_real = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config_real.yaml')
-    rviz_config_dir = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'localizer_rviz_config.rviz')
+    rviz_config_sim = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'localizer_sim.rviz')
+    rviz_config_real = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'localizer_real.rviz')
 
     map_file = LaunchConfiguration('map_file')
     use_real_robot = PythonExpression([
@@ -35,15 +36,6 @@ def generate_launch_description() -> LaunchDescription:
     load_nodes_sim = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_real_robot])),
         actions=[
-            Node(
-                package='tf2_ros',
-                executable='static_transform_publisher',
-                name='static_transform_publisher_turtle_odom',
-                output='screen',
-                emulate_tty=True,
-                arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
-            ),
-
             Node(
                 package='nav2_map_server',
                 executable='map_server',
@@ -80,7 +72,7 @@ def generate_launch_description() -> LaunchDescription:
                 executable='rviz2',
                 name='rviz2',
                 output='screen',
-                arguments=['-d', rviz_config_dir]
+                arguments=['-d', rviz_config_sim]
             )
         ]
     )
@@ -88,15 +80,6 @@ def generate_launch_description() -> LaunchDescription:
     load_nodes_real = GroupAction(
         condition=IfCondition(use_real_robot),
         actions=[
-            Node(
-                package='tf2_ros',
-                executable='static_transform_publisher',
-                name='static_transform_publisher_turtle_odom',
-                output='screen',
-                emulate_tty=True,
-                arguments=['0', '0', '0', '0', '0', '0', 'map', 'robot_odom']
-            ),
-
             Node(
                 package='nav2_map_server',
                 executable='map_server',
@@ -115,7 +98,6 @@ def generate_launch_description() -> LaunchDescription:
                 name='amcl',
                 output='screen',
                 parameters=[nav2_yaml_real],
-                remappings=[('/cmd_vel', '/robot/cmd_vel')]
             ),
 
             Node(
@@ -133,7 +115,7 @@ def generate_launch_description() -> LaunchDescription:
                 executable='rviz2',
                 name='rviz2',
                 output='screen',
-                arguments=['-d', rviz_config_dir]
+                arguments=['-d', rviz_config_real]
             )
         ]
     )
