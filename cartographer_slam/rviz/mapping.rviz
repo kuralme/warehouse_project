@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Odometry1/Shape1
+        - /Odometry1/Topic1
         - /Map1/Topic1
       Splitter Ratio: 0.6703600883483887
     Tree Height: 553
@@ -127,7 +127,7 @@ Visualization Manager:
           Value: true
         Value: true
       Enabled: true
-      Keep: 100
+      Keep: 3
       Name: Odometry
       Position Tolerance: 0.10000000149011612
       Shape:

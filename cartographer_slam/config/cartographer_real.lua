@@ -36,10 +36,11 @@ TRAJECTORY_BUILDER_2D.missing_data_ray_length = 3.0
 TRAJECTORY_BUILDER_2D.use_imu_data = false
 TRAJECTORY_BUILDER_2D.use_online_correlative_scan_matching = true 
 TRAJECTORY_BUILDER_2D.motion_filter.max_angle_radians = math.rad(0.05)
+TRAJECTORY_BUILDER_2D.submaps.num_range_data = 150
 
-POSE_GRAPH.constraint_builder.min_score = 0.65
+POSE_GRAPH.constraint_builder.min_score = 0.6
 POSE_GRAPH.constraint_builder.global_localization_min_score = 0.7
 
--- POSE_GRAPH.optimize_every_n_nodes = 0
+POSE_GRAPH.optimize_every_n_nodes = 5
 
 return options
