@@ -6,7 +6,7 @@ from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, GroupAction
 from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node, SetParameter
+from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:

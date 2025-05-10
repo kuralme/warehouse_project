@@ -10,13 +10,13 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    rviz_config_sim = os.path.join(get_package_share_directory('path_planner_server'), 'rviz', 'pathplanning.rviz')    
+    rviz_config_sim = os.path.join(get_package_share_directory('path_planner_server'), 'rviz', 'pathplanning.rviz')
     controller_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'controller_sim.yaml')
     bt_navigator_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'bt_navigator_sim.yaml')
     planner_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'planner_sim.yaml')
     recovery_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'recoveries_sim.yaml')
     
-    rviz_config_real = os.path.join(get_package_share_directory('path_planner_server'), 'rviz', 'pathplanning.rviz')
+    rviz_config_real = os.path.join(get_package_share_directory('path_planner_server'), 'rviz', 'pathplanning_real.rviz')
     controller_yaml_real = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'controller_real.yaml')
     bt_navigator_yaml_real = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'bt_navigator_real.yaml')
     planner_yaml_real = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'planner_real.yaml')
