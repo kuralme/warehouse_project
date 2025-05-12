@@ -11,6 +11,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description() -> LaunchDescription:
     
+    filters_sim = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'filters_sim.yaml')
+    filters_real = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'filters_real.yaml')
     nav2_yaml_sim = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config_sim.yaml')
     nav2_yaml_real = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config_real.yaml')
     rviz_config_sim = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'localizer_sim.rviz')
@@ -36,6 +38,24 @@ def generate_launch_description() -> LaunchDescription:
     load_nodes_sim = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_real_robot])),
         actions=[
+
+            Node(
+                package='nav2_map_server',
+                executable='map_server',
+                name='filter_mask_server',
+                output='screen',
+                emulate_tty=True,
+                parameters=[filters_sim]
+            ),
+            Node(
+                package='nav2_map_server',
+                executable='costmap_filter_info_server',
+                name='costmap_filter_info_server',
+                output='screen',
+                emulate_tty=True,
+                parameters=[filters_sim]
+            ),
+
             Node(
                 package='nav2_map_server',
                 executable='map_server',
@@ -64,7 +84,11 @@ def generate_launch_description() -> LaunchDescription:
                 output='screen',
                 parameters=[{'use_sim_time': True},
                             {'autostart': True},
-                            {'node_names': ['map_server', 'amcl']}]
+                            {'node_names': ['map_server',
+                                            'amcl',
+                                            'filter_mask_server',
+                                            'costmap_filter_info_server',
+                                            ]}]
             ),
 
             Node(
@@ -80,6 +104,24 @@ def generate_launch_description() -> LaunchDescription:
     load_nodes_real = GroupAction(
         condition=IfCondition(use_real_robot),
         actions=[
+
+            Node(
+                package='nav2_map_server',
+                executable='map_server',
+                name='filter_mask_server',
+                output='screen',
+                emulate_tty=True,
+                parameters=[filters_real]
+            ),
+            Node(
+                package='nav2_map_server',
+                executable='costmap_filter_info_server',
+                name='costmap_filter_info_server',
+                output='screen',
+                emulate_tty=True,
+                parameters=[filters_real]
+            ),
+
             Node(
                 package='nav2_map_server',
                 executable='map_server',
@@ -107,7 +149,11 @@ def generate_launch_description() -> LaunchDescription:
                 output='screen',
                 parameters=[{'use_sim_time': True},
                             {'autostart': True},
-                            {'node_names': ['map_server', 'amcl']}]
+                            {'node_names': ['map_server',
+                                            'amcl',
+                                            'filter_mask_server',
+                                            'costmap_filter_info_server',
+                                            ]}]
             ),
 
             Node(
