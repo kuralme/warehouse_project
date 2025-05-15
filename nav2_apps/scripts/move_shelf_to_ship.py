@@ -16,7 +16,8 @@ from tf2_ros import TransformListener, Buffer
 from tf2_ros import StaticTransformBroadcaster, TransformStamped
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from rclpy.executors import MultiThreadedExecutor
-
+from rcl_interfaces.srv import SetParameters
+from rcl_interfaces.msg import Parameter, ParameterValue, ParameterType
 
 '''
 Warehouse project - Nav2 Navigation with API
@@ -40,9 +41,9 @@ class WarehouseNavigator(rclpy.node.Node):
         
         # Waypoints [x, y, yaw]
         self.task_route = [
-            [0.014, 0.029, 0.0],      # Initial pose
-            [5.606, -0.022, -1.574],  # Loading
-            [2.411, 1.122, 1.574],    # Shipping
+            [0.000, 0.000, 0.000    ],  # Initial pose
+            [5.646,-0.022,-math.pi/2],  # Loading
+            [2.451, 1.429, math.pi/2],  # Shipping
         ]
 
         # Current state variables
@@ -52,6 +53,18 @@ class WarehouseNavigator(rclpy.node.Node):
         self.angle_increment = 0
         self.angle_min = 0
         self.cart_pose = PoseStamped()
+
+        # Robot footprint dicts
+        self.footprint_normal = ({
+            "robot_radius": 0.3,
+            "inflation_layer.inflation_radius": 0.35,
+            "footprint": []
+        })
+        self.footprint_w_cart = ({
+            "robot_radius": 0.0,
+            "inflation_layer.inflation_radius": 0.45,
+            "footprint": [[0.425, 0.4], [0.425, -0.4], [-0.425, -0.4], [-0.425, 0.4]]
+        })
 
         # Prepare initial pose
         self.initial_pose = self.create_pose(*self.task_route[0])
@@ -82,7 +95,7 @@ class WarehouseNavigator(rclpy.node.Node):
         while not self.navigator.isTaskComplete():
             feedback = self.navigator.getFeedback()
             if feedback:
-                self.get_logger().info(f"Estimated time remaining: {feedback.estimated_time_remaining.sec} sec")
+                self.get_logger().info(f"{waypoint_name} ETA: {feedback.estimated_time_remaining.sec} sec")
 
         result = self.navigator.getResult()
         if result == TaskResult.SUCCEEDED:
@@ -176,21 +189,18 @@ class WarehouseNavigator(rclpy.node.Node):
     def move_to_attach(self):
         """Move robot directly to cart loading position."""
 
+        t = TransformStamped()
+        try:
+            t = self.tf_buffer.lookup_transform('robot_base_link', 'cart_frame', rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=3))
+        except tf2_ros.TransformException:
+            self.get_logger().warn("cart_frame not available in TF tree...")
+            return
+
         self.get_logger().info("Moving to cart loading position...")
 
-        rate = self.create_rate(10)
         while rclpy.ok():
+            t = self.tf_buffer.lookup_transform('robot_base_link', 'cart_frame', rclpy.time.Time())
 
-            t = TransformStamped()
-            # Wait until the transform is available
-            while True:
-                try:
-                    t = self.tf_buffer.lookup_transform('robot_base_link', 'cart_frame', rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=1))
-                    break
-                except tf2_ros.TransformException:
-                    self.get_logger().warn("Waiting for 'cart_frame' to be available in TF tree...")
-                    time.sleep(1)  # Wait and retry
-            
             dx = t.transform.translation.x + 0.5
             dy = t.transform.translation.y
 
@@ -200,38 +210,121 @@ class WarehouseNavigator(rclpy.node.Node):
 
             vel_msg = Twist()
 
-            self.get_logger().info(f"Goal dist: {error_distance}")
             if error_distance > 0.1:
                 vel_msg.linear.x = min(1.0 * error_distance, 0.3)
                 vel_msg.angular.z = -0.5 * error_yaw
+                self.cmd_vel_pub.publish(vel_msg)
+            else:
+                while rclpy.ok():
+                    target_yaw = -math.pi/2
+                    q = self.robot_odom.pose.pose.orientation
+                    _, _, current_yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+
+                    yaw_error = target_yaw - current_yaw
+                    if yaw_error > math.pi :
+                        yaw_error -= 2 * math.pi
+                    elif yaw_error < -math.pi :
+                        yaw_error += 2 * math.pi
+                    
+                    if abs(yaw_error) > 0.05:
+                        vel_msg.linear.x = 0.0
+                        vel_msg.angular.z = yaw_error
+                        self.cmd_vel_pub.publish(vel_msg)
+                    else:
+                        vel_msg.linear.x = 0.0
+                        vel_msg.angular.z = 0.0
+                        self.get_logger().info("Approach completed.")
+                        self.cmd_vel_pub.publish(vel_msg)
+                        return
+                    rclpy.spin_once(self, timeout_sec=0.01)
+                
+            rclpy.spin_once(self, timeout_sec=0.01)
+
+    def move_back_up(self):
+        """Move robot back to resume navigation."""
+
+        start_x = self.robot_odom.pose.pose.position.x
+        start_y = self.robot_odom.pose.pose.position.y
+
+        q = self.robot_odom.pose.pose.orientation
+        _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+
+        while rclpy.ok():
+            current_pose = self.robot_odom.pose.pose
+            curr_x = current_pose.position.x
+            curr_y = current_pose.position.y
+
+            dx = curr_x - start_x
+            dy = curr_y - start_y
+            moved_distance = -(dx * math.cos(yaw) + dy * math.sin(yaw))
+            error_distance = 1.35 - moved_distance
+
+            vel_msg = Twist()
+
+            if error_distance > 0.1:
+                vel_msg.linear.x = -min(0.3, 1.0 * error_distance)
+                vel_msg.angular.z = 0.0
+                self.cmd_vel_pub.publish(vel_msg)
             else:
                 vel_msg.linear.x = 0.0
                 vel_msg.angular.z = 0.0
-                self.get_logger().info("Approach completed.")
+                self.cmd_vel_pub.publish(vel_msg)
                 return
+            rclpy.spin_once(self, timeout_sec=0.01)
 
-            self.cmd_vel_pub.publish(vel_msg)
-            rate.sleep()
+    def set_footprint(self, params_dict):
+        """Set costmap robot footprint parameters dynamically."""
 
+        for costmap in ['local_costmap/local_costmap', 'global_costmap/global_costmap']:
+            cli = self.create_client(SetParameters, f'/{costmap}/set_parameters')
 
+            if not cli.wait_for_service(timeout_sec=2.0):
+                self.get_logger().warn(f"Service {costmap}/set_parameters not available!")
+                continue
+
+            req = SetParameters.Request()
+            req.parameters = []
+            for name, value in params_dict.items():
+                param = Parameter()
+                param.name = name
+                if isinstance(value, float):
+                    param.value = ParameterValue(type=ParameterType.PARAMETER_DOUBLE, double_value=value)
+                elif isinstance(value, str):
+                    param.value = ParameterValue(type=ParameterType.PARAMETER_STRING, string_value=value)
+                elif isinstance(value, list):
+                    param.value = ParameterValue(type=ParameterType.PARAMETER_STRING, string_value=str(value))
+                req.parameters.append(param)
+
+            future = cli.call_async(req)
+            rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+
+            if future.result() is not None:
+                self.get_logger().info(f"Set parameters for {costmap}")
+            else:
+                self.get_logger().warn(f"Failed to set parameters for {costmap}")
+ 
     def perform_tasks(self):
         for i, (x, y, yaw) in enumerate(self.task_route[1:], start=1):
             pose = self.create_pose(x, y, yaw)
-            self.go_to_pose(pose, f"Waypoint {i}")
-
             if i == 1:
+                self.go_to_pose(pose, "Loading position")
                 self.approach_cart()
                 self.get_logger().info("Lifting the shelf")
                 self.attach_pub.publish(String())
+                self.set_footprint(self.footprint_w_cart)
                 self.get_logger().info("Shelf attached. Moving to Shipping position")
+                self.move_back_up()
             else:
+                self.go_to_pose(pose, "Shipping position")
                 self.get_logger().info("At Shipping position. Detaching the shelf")
                 self.detach_pub.publish(String())
+                self.set_footprint(self.footprint_normal)
+                self.get_logger().info("Shelf detached. Returning to initial pose...")
+                self.move_back_up()
 
     def return_to_start(self):
-        self.get_logger().info("Returning to initial pose...")
         self.initial_pose.header.stamp = self.navigator.get_clock().now().to_msg()
-        self.go_to_pose(self.initial_pose, "Initial Pose")
+        self.go_to_pose(self.initial_pose, "Initial position")
 
     def shutdown(self):
         self.get_logger().info("All tasks completed. Shutting down.")
