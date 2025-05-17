@@ -31,39 +31,39 @@ class WarehouseNavigator(rclpy.node.Node):
         
         self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-        self.cmd_vel_pub = self.create_publisher(Twist, '/diffbot_base_controller/cmd_vel_unstamped', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.attach_pub = self.create_publisher(String, '/elevator_up', 1)
         self.detach_pub = self.create_publisher(String, '/elevator_down', 1)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.tf_broadcaster = StaticTransformBroadcaster(self)
-        
+         
         # Waypoints [x, y, yaw]
         self.task_route = [
-            [0.000, 0.000, 0.000    ],  # Initial pose
-            [5.646,-0.022,-math.pi/2],  # Loading
-            [2.451, 1.429, math.pi/2],  # Shipping
+            [2.000, -1.912, -1.855],  # Initial pose
+            [0.164, -5.924,  2.924],  # Loading
+            [2.761, -4.147, -0.284],  # Shipping
         ]
 
         # Current state variables
         self.robot_odom = None
         self.laser_ranges = []
         self.laser_intensities = []
-        self.angle_increment = 0
-        self.angle_min = 0
+        self.angle_increment = 0.0
+        self.angle_min = 0.0
         self.cart_pose = PoseStamped()
 
         # Robot footprint dicts
         self.footprint_normal = ({
             "robot_radius": 0.3,
-            "inflation_layer.inflation_radius": 0.35,
+            "inflation_layer.inflation_radius": 0.32,
             "footprint": []
         })
         self.footprint_w_cart = ({
             "robot_radius": 0.0,
             "inflation_layer.inflation_radius": 0.45,
-            "footprint": [[0.425, 0.4], [0.425, -0.4], [-0.425, -0.4], [-0.425, 0.4]]
+            "footprint": [[0.46, 0.45], [0.46, -0.45], [-0.46, -0.45], [-0.46, 0.45]]
         })
 
         # Prepare initial pose
@@ -121,24 +121,7 @@ class WarehouseNavigator(rclpy.node.Node):
 
     def approach_cart(self):
         leg_data = []
-        nlegs = 0
-        leg_flag = False
-        leg_start = 0
-        for i, intensity in enumerate(self.laser_intensities):
-            if intensity > 100.0:
-                if not leg_flag:
-                    leg_flag = True
-                    leg_start = i
-            else:
-                if leg_flag:
-                    leg_flag = False
-                    leg_center = (leg_start + i) // 2
-                    nlegs += 1
-                    leg_data.append((leg_center, self.laser_ranges[leg_center]))
-
-        if nlegs < 2:
-            self.get_logger().warn("Less than 2 reflectors found.")
-            return
+        leg_data = self.extract_leg_centers()
 
         a = leg_data[0][1]
         b = leg_data[1][1]
@@ -152,8 +135,40 @@ class WarehouseNavigator(rclpy.node.Node):
 
         self.broadcast_cart_frame(mid_x, mid_y)
 
-        # Move the robot to the attaching position
+        # Move the robot to the cart attaching position
         self.move_to_attach()
+
+    def extract_leg_centers(self, intensity_threshold=1500.0, angle_window=math.pi/4, max_range=1.0):
+        center_index = 540
+        index_range = int(angle_window / self.angle_increment)
+        start_index = max(0, center_index - index_range)
+        end_index = min(len(self.laser_intensities), center_index + index_range)
+
+        left_candidates = []
+        right_candidates = []
+
+        for i in range(start_index, end_index):
+            r = self.laser_ranges[i]
+            intensity = self.laser_intensities[i]
+
+            if r < max_range and intensity > intensity_threshold:
+                if i < center_index:
+                    left_candidates.append((i, r, intensity))
+                elif i > center_index:
+                    right_candidates.append((i, r, intensity))
+
+        if not len(left_candidates) or not len(right_candidates):
+            self.get_logger().warn("Not enough valid reflectors found.")
+            return []
+
+        # Sort by closeness to center index on each side
+        left = sorted(left_candidates, key=lambda x: abs(x[0] - center_index))[0]
+        right = sorted(right_candidates, key=lambda x: abs(x[0] - center_index))[0]
+
+        leg_data = [(left[0], left[1]), (right[0], right[1])]
+        for i, r in leg_data:
+            self.get_logger().info(f"Leg found: Index={i}, Range={r:.2f}")
+        return leg_data
 
     def broadcast_cart_frame(self, x, y):
         """Broadcast the cart frame transform from laser frame to map frame."""
@@ -198,46 +213,48 @@ class WarehouseNavigator(rclpy.node.Node):
 
         self.get_logger().info("Moving to cart loading position...")
 
+        # Rotate the robot towards the goal
         while rclpy.ok():
             t = self.tf_buffer.lookup_transform('robot_base_link', 'cart_frame', rclpy.time.Time())
 
-            dx = t.transform.translation.x + 0.5
+            dx = t.transform.translation.x + 0.4
             dy = t.transform.translation.y
 
-            error_distance = math.sqrt(dx**2 + dy**2)
-            error_yaw = math.atan2(dy, dx)
-            error_yaw = (error_yaw + math.pi) % (2 * math.pi) - math.pi # Normalize angle to [-pi, pi]
+            yaw_error = math.atan2(dy, dx)
+            if yaw_error > math.pi:
+                yaw_error -= 2 * math.pi
+            elif yaw_error < -math.pi:
+                yaw_error += 2 * math.pi
 
             vel_msg = Twist()
 
-            if error_distance > 0.1:
-                vel_msg.linear.x = min(1.0 * error_distance, 0.3)
-                vel_msg.angular.z = -0.5 * error_yaw
+            if abs(yaw_error) > 0.1:
+                vel_msg.linear.x = 0.0
+                vel_msg.angular.z = 0.2 * yaw_error
                 self.cmd_vel_pub.publish(vel_msg)
+                # self.get_logger().info(f"Rotate-err {yaw_error:.2f}")
             else:
-                while rclpy.ok():
-                    target_yaw = -math.pi/2
-                    q = self.robot_odom.pose.pose.orientation
-                    _, _, current_yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+                # self.get_logger().info("Rotation completed, moving forward.")
+                break
 
-                    yaw_error = target_yaw - current_yaw
-                    if yaw_error > math.pi :
-                        yaw_error -= 2 * math.pi
-                    elif yaw_error < -math.pi :
-                        yaw_error += 2 * math.pi
-                    
-                    if abs(yaw_error) > 0.05:
-                        vel_msg.linear.x = 0.0
-                        vel_msg.angular.z = yaw_error
-                        self.cmd_vel_pub.publish(vel_msg)
-                    else:
-                        vel_msg.linear.x = 0.0
-                        vel_msg.angular.z = 0.0
-                        self.get_logger().info("Approach completed.")
-                        self.cmd_vel_pub.publish(vel_msg)
-                        return
-                    rclpy.spin_once(self, timeout_sec=0.01)
-                
+            rclpy.spin_once(self, timeout_sec=0.01)
+
+        vel_msg = Twist()
+        vel_msg.linear.x = 0.15
+        vel_msg.angular.z = 0.0
+
+        # Move forward X sec
+        start_time = time.time()
+        while rclpy.ok():
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            if elapsed_time > 7.0:
+                vel_msg.linear.x = 0.0
+                self.cmd_vel_pub.publish(vel_msg)
+                self.get_logger().info("Move completed.")
+                return
+
+            self.cmd_vel_pub.publish(vel_msg)
             rclpy.spin_once(self, timeout_sec=0.01)
 
     def move_back_up(self):
@@ -257,7 +274,7 @@ class WarehouseNavigator(rclpy.node.Node):
             dx = curr_x - start_x
             dy = curr_y - start_y
             moved_distance = -(dx * math.cos(yaw) + dy * math.sin(yaw))
-            error_distance = 1.35 - moved_distance
+            error_distance = 1.5 - moved_distance
 
             vel_msg = Twist()
 
@@ -304,6 +321,7 @@ class WarehouseNavigator(rclpy.node.Node):
                 self.get_logger().warn(f"Failed to set parameters for {costmap}")
  
     def perform_tasks(self):
+        self.detach_pub.publish(String()) # Ensure elevator is not up
         for i, (x, y, yaw) in enumerate(self.task_route[1:], start=1):
             pose = self.create_pose(x, y, yaw)
             if i == 1:
@@ -311,6 +329,9 @@ class WarehouseNavigator(rclpy.node.Node):
                 self.approach_cart()
                 self.get_logger().info("Lifting the shelf")
                 self.attach_pub.publish(String())
+                time.sleep(2)
+                self.attach_pub.publish(String()) # To ensure its up
+                time.sleep(8)
                 self.set_footprint(self.footprint_w_cart)
                 self.get_logger().info("Shelf attached. Moving to Shipping position")
                 self.move_back_up()
@@ -318,6 +339,9 @@ class WarehouseNavigator(rclpy.node.Node):
                 self.go_to_pose(pose, "Shipping position")
                 self.get_logger().info("At Shipping position. Detaching the shelf")
                 self.detach_pub.publish(String())
+                time.sleep(2)
+                self.detach_pub.publish(String()) # To ensure its down
+                time.sleep(8)
                 self.set_footprint(self.footprint_normal)
                 self.get_logger().info("Shelf detached. Returning to initial pose...")
                 self.move_back_up()
@@ -342,7 +366,7 @@ if __name__ == '__main__':
     executor.add_node(robot_node)
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
-
+    
     try:
         while rclpy.ok():
             robot_node.perform_tasks()
