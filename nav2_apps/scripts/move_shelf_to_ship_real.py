@@ -42,7 +42,7 @@ class WarehouseNavigator(rclpy.node.Node):
         # Waypoints [x, y, yaw]
         self.task_route = [
             [2.000, -1.912, -1.855],  # Initial pose
-            [0.164, -5.924,  2.924],  # Loading
+            [0.278, -6.014,  2.911],  # Loading
             [2.761, -4.147, -0.284],  # Shipping
         ]
 
@@ -86,6 +86,14 @@ class WarehouseNavigator(rclpy.node.Node):
         return pose
 
     def setup(self):
+        # Wait until valid laser scan data is received or timeout occurs.
+        start_time = time.time()
+        while not (self.laser_ranges and self.laser_intensities and self.angle_increment > 0):
+            if time.time() - start_time > 5.0:
+                self.get_logger().error("Laser scan data not received in time!")
+                return False
+            rclpy.spin_once(self, timeout_sec=0.1)
+        
         self.get_logger().info("Setting initial pose...")
         self.navigator.setInitialPose(self.initial_pose)
 
@@ -120,8 +128,10 @@ class WarehouseNavigator(rclpy.node.Node):
         self.robot_odom = msg
 
     def approach_cart(self):
-        leg_data = []
+
         leg_data = self.extract_leg_centers()
+        if not leg_data:
+            return
 
         a = leg_data[0][1]
         b = leg_data[1][1]
@@ -138,7 +148,7 @@ class WarehouseNavigator(rclpy.node.Node):
         # Move the robot to the cart attaching position
         self.move_to_attach()
 
-    def extract_leg_centers(self, intensity_threshold=1500.0, angle_window=math.pi/4, max_range=1.0):
+    def extract_leg_centers(self, intensity_threshold=1500.0, angle_window=math.pi/3, max_range=1.3):
         center_index = 540
         index_range = int(angle_window / self.angle_increment)
         start_index = max(0, center_index - index_range)
@@ -228,7 +238,7 @@ class WarehouseNavigator(rclpy.node.Node):
 
             vel_msg = Twist()
 
-            if abs(yaw_error) > 0.1:
+            if abs(yaw_error) > 0.16:
                 vel_msg.linear.x = 0.0
                 vel_msg.angular.z = 0.2 * yaw_error
                 self.cmd_vel_pub.publish(vel_msg)
@@ -248,7 +258,7 @@ class WarehouseNavigator(rclpy.node.Node):
         while rclpy.ok():
             end_time = time.time()
             elapsed_time = end_time - start_time
-            if elapsed_time > 7.0:
+            if elapsed_time > 8.0:
                 vel_msg.linear.x = 0.0
                 self.cmd_vel_pub.publish(vel_msg)
                 self.get_logger().info("Move completed.")
@@ -321,7 +331,11 @@ class WarehouseNavigator(rclpy.node.Node):
                 self.get_logger().warn(f"Failed to set parameters for {costmap}")
  
     def perform_tasks(self):
-        self.detach_pub.publish(String()) # Ensure elevator is not up
+        """Navigate robot to designated positions and perform tasks in order."""
+
+        self.detach_pub.publish(String()) # Ensure platform is not up at start
+        time.sleep(5) # Also need for initialization to finish
+
         for i, (x, y, yaw) in enumerate(self.task_route[1:], start=1):
             pose = self.create_pose(x, y, yaw)
             if i == 1:
